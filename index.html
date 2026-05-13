@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Turkey Sailing Route — Göcek &amp; Fethiye Gulf</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Lato', system-ui, sans-serif;
+    background: #f5f0e8;
+    color: #3a2e22;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Header */
+  .map-header {
+    background: #1a2f3a;
+    color: #f5f0e8;
+    padding: 14px 24px;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    flex-shrink: 0;
+    z-index: 1000;
+  }
+  .map-header h1 {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 1.35rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: #f5f0e8;
+  }
+  .map-header .subtitle {
+    font-size: 0.8rem;
+    color: #c9bfa8;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* Main layout */
+  .map-wrapper {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 320px;
+    min-width: 260px;
+    background: #fffdf7;
+    border-right: 1px solid #e5ddd0;
+    overflow-y: auto;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-section-title {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #9a8470;
+    padding: 16px 20px 8px;
+    border-bottom: 1px solid #f0ebe0;
+  }
+
+  .stop-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px 20px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0ebe0;
+    transition: background 0.15s;
+    position: relative;
+  }
+  .stop-item:hover {
+    background: #fdf6ec;
+  }
+  .stop-item.active {
+    background: #fdf6ec;
+    border-left: 3px solid #c4892a;
+  }
+
+  .stop-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #c4892a;
+    border: 2.5px solid #fff;
+    box-shadow: 0 0 0 1.5px #c4892a;
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .excursion-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #5c7a5e;
+    border: 2.5px solid #fff;
+    box-shadow: 0 0 0 1.5px #5c7a5e;
+    color: #fff;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .stop-content {
+    flex: 1;
+    min-width: 0;
+  }
+  .stop-name {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #2a1f14;
+    line-height: 1.2;
+  }
+  .stop-highlight {
+    font-size: 0.72rem;
+    color: #c4892a;
+    letter-spacing: 0.04em;
+    margin-top: 2px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .stop-desc {
+    font-size: 0.8rem;
+    color: #6a5a4a;
+    line-height: 1.5;
+    margin-top: 6px;
+    display: none;
+  }
+  .stop-item.active .stop-desc {
+    display: block;
+  }
+
+  .excursion-section {
+    border-top: 2px solid #e5ddd0;
+    margin-top: auto;
+  }
+
+  /* Map container */
+  #map {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: #d4e3ee;
+    z-index: 1;
+  }
+
+  /* Custom Leaflet marker styles */
+  .numbered-marker {
+    background: #c4892a;
+    border: 3px solid #ffffff;
+    box-shadow: 0 0 0 2px #c4892a, 0 2px 8px rgba(0,0,0,0.35);
+    border-radius: 50%;
+    color: #ffffff;
+    font-family: 'Lato', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .numbered-marker:hover,
+  .numbered-marker.active {
+    transform: scale(1.2);
+    z-index: 1000 !important;
+  }
+
+  .excursion-marker {
+    background: #5c7a5e;
+    border: 3px solid #ffffff;
+    box-shadow: 0 0 0 2px #5c7a5e, 0 2px 8px rgba(0,0,0,0.3);
+    border-radius: 50%;
+    color: #ffffff;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .excursion-marker:hover,
+  .excursion-marker.active {
+    transform: scale(1.2);
+    z-index: 1000 !important;
+  }
+
+  /* Leaflet popup styling */
+  .leaflet-popup-content-wrapper {
+    background: #fffdf7;
+    border: 1px solid #e5ddd0;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    padding: 0;
+  }
+  .leaflet-popup-content {
+    margin: 0;
+    padding: 16px 18px;
+    min-width: 220px;
+    max-width: 280px;
+  }
+  .popup-name {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #2a1f14;
+    margin-bottom: 4px;
+  }
+  .popup-highlight {
+    font-size: 0.7rem;
+    color: #c4892a;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .popup-desc {
+    font-size: 0.82rem;
+    color: #5a4a3a;
+    line-height: 1.55;
+  }
+  .leaflet-popup-tip {
+    background: #fffdf7;
+  }
+
+  /* Map overlay tint */
+  .map-tint {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 200;
+    mix-blend-mode: multiply;
+    background: rgba(244, 230, 200, 0.12);
+  }
+
+  /* Legend */
+  .map-legend {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(255, 253, 247, 0.95);
+    border: 1px solid #e5ddd0;
+    border-radius: 8px;
+    padding: 12px 16px;
+    z-index: 500;
+    font-size: 0.76rem;
+    color: #5a4a3a;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .legend-item:last-child { margin-bottom: 0; }
+  .legend-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    flex-shrink: 0;
+  }
+  .legend-line {
+    width: 20px;
+    height: 3px;
+    flex-shrink: 0;
+    border-radius: 2px;
+  }
+
+  /* Mobile */
+  @media (max-width: 640px) {
+    body {
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .map-header {
+      padding: 8px 16px;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .map-header h1 {
+      font-size: 1.05rem;
+    }
+    .map-header .subtitle {
+      font-size: 0.7rem;
+    }
+
+    .map-wrapper {
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      width: 100%;
+      min-width: unset;
+      height: 42%;
+      max-height: 42%;
+      flex-shrink: 0;
+      border-right: none;
+      border-bottom: 1px solid #e5ddd0;
+    }
+
+    .map-wrapper > div:last-child {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+    }
+
+    #map {
+      position: absolute !important;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .map-legend {
+      bottom: 10px;
+      right: 8px;
+      padding: 8px 10px;
+      font-size: 0.68rem;
+    }
+
+    .leaflet-popup-content {
+      min-width: 180px;
+      max-width: 220px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="map-header">
+  <h1>Türkiye — Gulf of Göcek &amp; Fethiye</h1>
+  <span class="subtitle">7-day sailing route</span>
+</div>
+
+<div class="map-wrapper">
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-section-title">Sailing Stops</div>
+    <!-- stops injected by JS -->
+    <div class="excursion-section">
+      <div class="sidebar-section-title">Land Excursions</div>
+      <!-- excursions injected by JS -->
+    </div>
+  </div>
+
+  <!-- Map -->
+  <div style="position:relative; flex:1;">
+    <div id="map"></div>
+    <div class="map-tint"></div>
+    <div class="map-legend" id="map-legend">
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#c4892a; box-shadow:0 0 0 1px #c4892a;"></div>
+        <span>Sailing anchorage</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#5c7a5e; box-shadow:0 0 0 1px #5c7a5e;"></div>
+        <span>Land excursion</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:#c4892a;"></div>
+        <span>Sailing route</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────────
+const STOPS = [{'num': 1, 'name': 'Göcek Marina', 'lat': 36.7527, 'lon': 28.9401, 'desc': "Your home base. Pick up your boat, stow your kit, and settle into the rhythm of the sea. Göcek is a proper sailor's town — fresh markets, a hammam, and dinner on the quay before the week begins.", 'highlight': 'Arrival & departure base'}, {'num': 2, 'name': 'Boynuzbükü', 'lat': 36.7107, 'lon': 28.8949, 'desc': 'A secluded bay ringed with amber trees, with a small jetty jutting into glassy water. Swim off the back of the boat, hike to the waterfall, or string up a hammock and let the afternoon disappear.', 'highlight': 'Waterfall hike · Amber forest'}, {'num': 3, 'name': 'Kapı Creek', 'lat': 36.6434, 'lon': 28.8933, 'desc': 'A narrow inlet at the southern edge of Göcek Gulf, with a beloved waterfront restaurant right on the dock. Spend the morning swimming in crystal water, the evening with grilled fish and a sunset hike above the bay.', 'highlight': 'Waterfront restaurant · Sunset hike'}, {'num': 4, 'name': 'Fethiye', 'lat': 36.6229, 'lon': 29.0983, 'desc': "The region's main harbour town — Lycian rock tombs carved into the cliffs above, a classic yacht hotel with rooftop pool bar, old-town bazaar for fresh spices and hand-woven textiles, and a proper Turkish bath to unknot every muscle.", 'highlight': 'Lycian tombs · Turkish bath · Old town'}, {'num': 5, 'name': 'Gemiler Island', 'lat': 36.5637, 'lon': 29.0825, 'desc': 'Byzantine ruins tumble down to the waterline on this uninhabited island, three miles west of Öludeniz. Anchor on the north side, swim to the ruins, and watch the last light turn the stone a deep rose gold.', 'highlight': 'Byzantine ruins · Wild anchorage'}, {'num': 6, 'name': "Cleopatra's Bath", 'lat': 36.64, 'lon': 28.8549, 'desc': 'A natural hammam bay — warm mineral springs seep up through the seabed, heating the shallows to bath temperature. The chef lights the fire on the foredeck and cooks a whole feast while you soak in water warmed since long before Cleopatra.', 'highlight': 'Natural hot spring · Open-fire feast'}];
+const EXCURSIONS = [{'name': 'Kayaköy', 'lat': 36.575, 'lon': 29.0911, 'desc': 'A ghost village frozen in 1923 — two thousand stone houses and a dozen churches abandoned during the population exchange between Greece and Turkey. Walk the cobbled lanes in near-silence. One of the most moving places in the Mediterranean.', 'highlight': 'Ghost village · 1923 history', 'icon': 'village'}, {'name': 'Babadag', 'lat': 36.5467, 'lon': 29.1158, 'desc': "Father Mountain rises 1,969 metres above the Blue Lagoon at Öludeniz, consistently rated the world's best paragliding site. Launch at dawn and spend twenty minutes arcing above one of the most beautiful coastlines on earth.", 'highlight': 'World-class paragliding · 1969m', 'icon': 'mountain'}];
+const ROUTE_COORDS = [
+  // Leg 1: Göcek → Boynuzbükü (KML Day 5 reversed — water-accurate)
+  [36.7527,28.9401],[36.7519,28.937],[36.7449,28.9341],[36.7376,28.9314],
+  [36.7342,28.9302],[36.732,28.9289],[36.7307,28.9282],[36.7297,28.9274],
+  [36.7283,28.9268],[36.7275,28.9262],[36.7268,28.926],[36.7263,28.9258],
+  [36.716,28.92],[36.7121,28.9101],[36.7121,28.9036],[36.7124,28.8998],
+  [36.7123,28.8977],[36.7107,28.8949],
+  // Leg 2: Boynuzbükü → Kapı Creek (KML Day 4 lower section — water-accurate)
+  [36.6791,28.8976],[36.6717,28.8835],[36.6542,28.8848],[36.6461,28.8935],
+  [36.6441,28.8938],[36.6434,28.8936],[36.6434,28.8933],
+  // Leg 3: Kapı Creek → Fethiye — FIXED: route NORTH of island cluster
+  // (original KML had direct jump across Tomb Islands; now routed through N channel)
+  [36.649,28.9131],
+  [36.656,28.932],[36.660,28.957],[36.657,28.980],[36.652,29.010],
+  [36.643,29.045],[36.635,29.064],
+  [36.6298,29.0756],[36.6287,29.0759],[36.6322,29.0772],[36.6454,29.0719],
+  [36.6467,29.0808],[36.646,29.0882],[36.6436,29.096],[36.642,29.1009],
+  [36.6393,29.1054],[36.6328,29.1034],[36.6306,29.1008],[36.6279,29.0964],
+  [36.6235,29.0975],[36.6229,29.0983],
+  // Leg 4: Fethiye → Gemiler (KML Day 2 — water-accurate)
+  [36.6275,29.0977],[36.6327,29.1046],[36.6397,29.1066],[36.6416,29.1033],
+  [36.6483,29.0866],[36.6461,29.0646],[36.6319,29.061],[36.6178,29.0167],
+  [36.5751,28.9928],[36.5604,29.0026],[36.5332,29.0053],[36.5297,29.0322],
+  [36.541,29.0331],[36.5375,29.0374],[36.5366,29.0448],[36.5367,29.0596],
+  [36.5411,29.0665],[36.5561,29.0618],[36.5558,29.0675],[36.5561,29.0797],
+  [36.5572,29.0815],[36.563,29.0833],[36.5637,29.0825],
+  // Leg 5: Gemiler → Cleopatra's Bath — FIXED: route SOUTH of island cluster
+  // then north up the western channel (avoids diagonal cut through Göcek islands)
+  [36.5631,29.0828],[36.5627,29.0842],[36.558,29.084],
+  [36.5454,29.0752],[36.5341,29.0582],[36.5251,29.0319],[36.5273,29.0096],
+  [36.5327,29.0005],[36.5397,28.9958],
+  // From open sea, navigate through S channel into eastern Göcek Gulf,
+  // then go NORTH to clear the island cluster, then approach Cleopatra's Bath
+  // from the NORTH via the western channel (Day 6 KML reversed)
+  [36.5600,28.9700],[36.5850,28.9500],[36.6050,28.9350],[36.6250,28.9200],
+  [36.6503,28.9077],[36.6700,28.9000],[36.6750,28.8749],
+  [36.6532,28.8705],[36.6455,28.8585],[36.6404,28.8551],
+  [36.64,28.8549],
+  // Leg 6: Cleopatra's Bath → Göcek (KML Day 6 — water-accurate)
+  [36.6404,28.8551],[36.6455,28.8585],[36.6532,28.8705],[36.6746,28.8749],
+  [36.693,28.8877],[36.6946,28.9001],[36.6971,28.9041],[36.7002,28.9073],
+  [36.7025,28.9091],[36.707,28.9126],[36.709,28.912],[36.711,28.9045],
+  [36.7112,28.8961],[36.7527,28.9401]
+];
+
+// ── Map init ──────────────────────────────────────────────────────────────────
+const map = L.map('map', {
+  zoomControl: true,
+  scrollWheelZoom: true,
+});
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  subdomains: 'abcd',
+  maxZoom: 19,
+}).addTo(map);
+
+// ── Route polyline ─────────────────────────────────────────────────────────────
+const routeLine = L.polyline(ROUTE_COORDS, {
+  color: '#c4892a',
+  weight: 3,
+  opacity: 0.85,
+  smoothFactor: 1.5,
+  dashArray: null,
+}).addTo(map);
+
+// ── Fit bounds ─────────────────────────────────────────────────────────────────
+const allPoints = [
+  ...STOPS.map(s => [s.lat, s.lon]),
+  ...EXCURSIONS.map(e => [e.lat, e.lon]),
+];
+setTimeout(() => {
+  map.invalidateSize();
+  map.fitBounds(L.latLngBounds(allPoints), { padding: [40, 40] });
+}, 100);
+
+window.addEventListener('resize', () => {
+  map.invalidateSize();
+  map.fitBounds(L.latLngBounds(allPoints), { padding: [40, 40] });
+});
+
+// ── State ──────────────────────────────────────────────────────────────────────
+let activeStop = null;
+let activeExcursion = null;
+const markerMap = {};
+const excursionMarkerMap = {};
+const sidebarItemMap = {};
+const sidebarExcursionMap = {};
+
+// ── Create numbered water-stop markers ────────────────────────────────────────
+function createNumberedIcon(num, isActive) {
+  return L.divIcon({
+    className: '',
+    html: `<div class="numbered-marker${isActive ? ' active' : ''}" style="width:36px;height:36px;">${num}</div>`,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    popupAnchor: [0, -22],
+  });
+}
+
+function createExcursionIcon(icon, isActive) {
+  const emoji = icon === 'mountain' ? '⛰' : '🏛';
+  return L.divIcon({
+    className: '',
+    html: `<div class="excursion-marker${isActive ? ' active' : ''}" style="width:36px;height:36px;">${emoji}</div>`,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    popupAnchor: [0, -22],
+  });
+}
+
+// ── Popup content ──────────────────────────────────────────────────────────────
+function popupContent(item, isExcursion) {
+  return `
+    <div class="popup-name">${item.name}</div>
+    <div class="popup-highlight">${item.highlight}</div>
+    <div class="popup-desc">${item.desc}</div>
+  `;
+}
+
+// ── Activate stop ──────────────────────────────────────────────────────────────
+function activateStop(num) {
+  // Deactivate previous
+  if (activeStop !== null) {
+    const prev = sidebarItemMap[activeStop];
+    if (prev) prev.classList.remove('active');
+    const prevMarker = markerMap[activeStop];
+    if (prevMarker) prevMarker.setIcon(createNumberedIcon(activeStop, false));
+  }
+  // Deactivate excursions
+  if (activeExcursion !== null) {
+    const prev = sidebarExcursionMap[activeExcursion];
+    if (prev) prev.classList.remove('active');
+    const prevMarker = excursionMarkerMap[activeExcursion];
+    if (prevMarker) prevMarker.setIcon(createExcursionIcon(EXCURSIONS.find(e=>e.name===activeExcursion)?.icon, false));
+    activeExcursion = null;
+  }
+
+  if (activeStop === num) {
+    activeStop = null;
+    return;
+  }
+  activeStop = num;
+  const el = sidebarItemMap[num];
+  if (el) {
+    el.classList.add('active');
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  const marker = markerMap[num];
+  if (marker) marker.setIcon(createNumberedIcon(num, true));
+}
+
+function activateExcursion(name) {
+  // Deactivate stops
+  if (activeStop !== null) {
+    const prev = sidebarItemMap[activeStop];
+    if (prev) prev.classList.remove('active');
+    const prevMarker = markerMap[activeStop];
+    if (prevMarker) prevMarker.setIcon(createNumberedIcon(activeStop, false));
+    activeStop = null;
+  }
+  // Deactivate previous excursion
+  if (activeExcursion !== null) {
+    const prev = sidebarExcursionMap[activeExcursion];
+    if (prev) prev.classList.remove('active');
+    const prevMarker = excursionMarkerMap[activeExcursion];
+    if (prevMarker) prevMarker.setIcon(createExcursionIcon(EXCURSIONS.find(e=>e.name===activeExcursion)?.icon, false));
+  }
+
+  if (activeExcursion === name) {
+    activeExcursion = null;
+    return;
+  }
+  activeExcursion = name;
+  const el = sidebarExcursionMap[name];
+  if (el) {
+    el.classList.add('active');
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  const excursion = EXCURSIONS.find(e => e.name === name);
+  const marker = excursionMarkerMap[name];
+  if (marker) marker.setIcon(createExcursionIcon(excursion?.icon, true));
+}
+
+// ── Render stops to sidebar + map ─────────────────────────────────────────────
+const sidebar = document.getElementById('sidebar');
+const excursionSection = sidebar.querySelector('.excursion-section');
+
+STOPS.forEach(stop => {
+  // Sidebar item
+  const item = document.createElement('div');
+  item.className = 'stop-item';
+  item.innerHTML = `
+    <div class="stop-badge">${stop.num}</div>
+    <div class="stop-content">
+      <div class="stop-name">${stop.name}</div>
+      <div class="stop-highlight">${stop.highlight}</div>
+      <div class="stop-desc">${stop.desc}</div>
+    </div>
+  `;
+  item.addEventListener('click', () => {
+    activateStop(stop.num);
+    map.setView([stop.lat, stop.lon], 13, { animate: true });
+    markerMap[stop.num]?.openPopup();
+  });
+  sidebar.insertBefore(item, excursionSection);
+  sidebarItemMap[stop.num] = item;
+
+  // Map marker
+  const marker = L.marker([stop.lat, stop.lon], {
+    icon: createNumberedIcon(stop.num, false),
+    zIndexOffset: 200,
+  }).addTo(map);
+  marker.bindPopup(popupContent(stop, false), { maxWidth: 300 });
+  marker.on('click', () => activateStop(stop.num));
+  markerMap[stop.num] = marker;
+});
+
+// ── Render excursions ─────────────────────────────────────────────────────────
+EXCURSIONS.forEach(exc => {
+  // Sidebar item
+  const item = document.createElement('div');
+  item.className = 'stop-item';
+  item.innerHTML = `
+    <div class="excursion-badge">${exc.icon === 'mountain' ? '⛰' : '🏛'}</div>
+    <div class="stop-content">
+      <div class="stop-name">${exc.name}</div>
+      <div class="stop-highlight">${exc.highlight}</div>
+      <div class="stop-desc">${exc.desc}</div>
+    </div>
+  `;
+  item.addEventListener('click', () => {
+    activateExcursion(exc.name);
+    map.setView([exc.lat, exc.lon], 13, { animate: true });
+    excursionMarkerMap[exc.name]?.openPopup();
+  });
+  excursionSection.appendChild(item);
+  sidebarExcursionMap[exc.name] = item;
+
+  // Map marker
+  const marker = L.marker([exc.lat, exc.lon], {
+    icon: createExcursionIcon(exc.icon, false),
+    zIndexOffset: 100,
+  }).addTo(map);
+  marker.bindPopup(popupContent(exc, true), { maxWidth: 300 });
+  marker.on('click', () => activateExcursion(exc.name));
+  excursionMarkerMap[exc.name] = marker;
+});
+</script>
+</body>
+</html>
